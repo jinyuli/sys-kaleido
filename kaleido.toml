@@ -1,0 +1,69 @@
+[[packages]]
+name = "cpz"
+url = "https://github.com/supercilex/fuc"
+version = "1.0.0"
+replace = "cp"
+language = "rust"
+bin_name = "cpz"
+remote_file_prefix="cpz"
+[packages.github]
+org = "supercilex"
+repo = "fuc"
+
+[[packages]]
+name = "rmz"
+url = "https://github.com/supercilex/fuc"
+version = "1.0.0"
+replace = "rm"
+language = "rust"
+bin_name = "rmz"
+remote_file_prefix="rmz"
+[packages.github]
+org = "supercilex"
+repo = "fuc"
+
+[[packages]]
+name = "dust"
+url = "https://github.com/bootandy/dust"
+version = "1.0.0"
+replace = "du"
+language = "rust"
+bin_name = "dust"
+[packages.github]
+org = "bootandy"
+repo = "dust"
+
+[[packages]]
+name = "lsd"
+url = "https://github.com/lsd-rs/lsd"
+version = "1.0.0"
+replace = "ls"
+language = "rust"
+bin_name = "lsd"
+description = "This project is a rewrite of GNU ls with lots of added features like colors, icons, tree-view, more formatting options etc."
+[packages.github]
+org = "lsd-rs"
+repo = "lsd"
+
+[[packages]]
+name = "bat"
+url = "https://github.com/sharkdp/bat"
+version = "0.24.0"
+replace = "cat"
+language = "rust"
+bin_name = "bat"
+[packages.github]
+org = "sharkdp"
+repo = "bat"
+
+[[bindles]]
+name = "core"
+[[bindles.packages]]
+name = "dust"
+alias = "du"
+[[bindles.packages]]
+name = "rmz"
+alias = "rm"
+[[bindles.packages]]
+name = "cpz"
+alias = "cp"
