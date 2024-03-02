@@ -103,15 +103,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Add openssl
-        uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages: pkg-config libssl-dev
       - name: Add musl
         if: endsWith(matrix.target, 'musl')
         uses: awalsh128/cache-apt-pkgs-action@latest
         with:
-          packages: musl-tools
+          packages: pkg-config libssl-dev musl-tools
       - name: Install Rust
         run: |
           rustup target add ${{ matrix.target }}

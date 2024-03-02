@@ -28,7 +28,7 @@ function get_os() {
 
 main() {
     local abi=$1
-    local release="0.1.0-alpha.2"
+    local release="0.1.0-alpha.3"
     local os=$(get_os)
     local arch=$(get_arch)
     local dest_file="${HOME}/.sys-kaleido/downloads/sys-kaleido${release}.${os}-${arch}"
