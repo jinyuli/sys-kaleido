@@ -1,9 +1,9 @@
 [package]
 name = "sys-kaleido"
-version = "0.1.0-alpha.1"
+version = "0.1.0-alpha.2"
 edition = "2021"
 categories = ["command-line-interface"]
-keywords = ["system tools", "kaleido"]
+keywords = ["tools", "kaleido"]
 license = "MIT"
 description = "sys-kaleido provides one-stop management for some new opensource system tools, such as ls, rm, cp .etc."
 repository = "https://github.com/jinyuli/sys-kaleido"

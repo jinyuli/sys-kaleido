@@ -3,7 +3,7 @@ param(
     $arch = "x86_64"
 )
 
-$release = "0.1.0-alpha.1"
+$release = "0.1.0-alpha.2"
 $os = "windows"
 
 $base_dir = "$HOME\.sys-kaleido"
