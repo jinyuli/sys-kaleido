@@ -1,6 +1,7 @@
 use crate::tool::logger::error;
 
 pub fn upgrade() {
+    tokio::task::spawn_blocking(|| {
     let release_update = match self_update::backends::github::Update::configure()
         .repo_owner("jinyuli")
         .repo_name("sys-kaleido")
@@ -28,4 +29,5 @@ pub fn upgrade() {
             error!("failed to check update: {}", e);
         }
     };
+    });
 }
