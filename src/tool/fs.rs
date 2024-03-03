@@ -272,6 +272,7 @@ pub fn make_file_link(link_file: &Path, origin_file: &Path) -> Result<()> {
             .arg("/h")
             .arg(link_file)
             .arg(origin_file)
+            .stdout(std::process::Stdio::null())
             .status()?;
         if !status.success() {
             error!("cmd mklink failed, status: {:?}", status.code());
