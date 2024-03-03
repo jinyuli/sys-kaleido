@@ -258,7 +258,7 @@ pub fn make_file_link(link_file: &Path, origin_file: &Path) -> Result<()> {
 
     debug!("make file link from {:?} to {:?}", link_file, origin_file);
     if let Err(err) = symlink_file(origin_file, link_file) {
-        error!("failed to make symlink: {}, try cmd", err);
+        debug!("failed to make symlink: {}, try cmd", err);
         if link_file.exists() {
             if link_file.is_symlink() {
                 remove_link(link_file)?
@@ -293,7 +293,7 @@ pub fn make_dir_link(link_dir: &Path, origin_dir: &Path) -> Result<()> {
 
     debug!("make dir link from {:?} to {:?}", link_dir, origin_dir);
     if let Err(err) = symlink_dir(origin_dir, link_dir) {
-        error!("failed to make symlink: {}, try cmd", err);
+        debug!("failed to make symlink: {}, try cmd", err);
         if link_dir.exists() {
             remove_dir(link_dir)?;
         }
