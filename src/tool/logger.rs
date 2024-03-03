@@ -13,7 +13,6 @@ use log4rs::{
         },
     },
     config::{Appender, Config, Logger, Root},
-    encode::pattern::PatternEncoder,
 };
 
 pub use log::{debug, error};
@@ -36,7 +35,7 @@ pub fn init_logger(log_path: &Path) -> Result<(), SetLoggerError> {
         .unwrap();
     let policy = policy::compound::CompoundPolicy::new(Box::new(trigger), Box::new(roller));
     let rolling_file = RollingFileAppender::builder()
-        .encoder(Box::new(PatternEncoder::new("{d} - {m}{n}\n")))
+        // .encoder(Box::new(PatternEncoder::new("{d} - {m}{n}\n")))
         .build(rolling_file_path, Box::new(policy))
         .unwrap();
 

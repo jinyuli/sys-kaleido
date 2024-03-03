@@ -1,5 +1,6 @@
 use crate::tool::{http::download_file, kaleido::KALEIDO_SYS_FILE};
-use log::{error, info};
+use colored::Colorize;
+use log::error;
 use std::{
     fs::remove_file,
     io::{ErrorKind, Read},
@@ -8,14 +9,15 @@ use std::{
 };
 use tokio::fs::{metadata, rename};
 
-const CONFIG_URL: &str = "https://raw.githubusercontent.com/jinyuli/sys-kaleido/master/kaleido.toml";
+const CONFIG_URL: &str =
+    "https://raw.githubusercontent.com/jinyuli/sys-kaleido/master/kaleido.toml";
 const DAYS_7: u64 = 7 * 24 * 60 * 60;
 
 pub async fn update(home_dir: &Path) {
     let tmp_config_path = home_dir.join(format!("{}.tmp", KALEIDO_SYS_FILE));
     match download_file(CONFIG_URL, &tmp_config_path).await {
         Ok(_) => {
-            let config_path = home_dir.join(format!("{}.tmp", KALEIDO_SYS_FILE));
+            let config_path = home_dir.join(KALEIDO_SYS_FILE);
             if config_path.exists() && config_path.is_file() {
                 if let Err(e) = remove_file(&config_path) {
                     error!("failed to delete old config file: {}", e);
@@ -23,10 +25,13 @@ pub async fn update(home_dir: &Path) {
                 }
             }
             if let Err(e) = rename(&tmp_config_path, &config_path).await {
-                error!("failed to rename new config file: {}", e);
+                error!(
+                    "failed to rename new config file(from {:?} to {:?}): {}",
+                    tmp_config_path, config_path, e
+                );
                 return;
             }
-            info!("updated configuration file successfully");
+            println!("{}", "updated configuration file successfully".green());
         }
         Err(e) => {
             error!("failed to download config file: {}", e);
