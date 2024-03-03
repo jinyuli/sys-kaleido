@@ -98,6 +98,7 @@ impl<'a> RustBinInstaller<'a> {
                 }
                 FileType::Compression => match decompress(&to_file, &tmp_dir) {
                     Ok(folder) => {
+                        debug!("decompress output: {:?}", folder);
                         let mut bin_file = match folder {
                             Some(f) => tmp_dir.join(f),
                             None => tmp_dir.clone(),
@@ -107,8 +108,8 @@ impl<'a> RustBinInstaller<'a> {
                         }
                         bin_file = bin_file.join(&package.bin_name);
                         bin_file.set_extension(EXE_EXTENSION);
-                        if let Err(e) = copy(bin_file, &package_bin_file) {
-                            error!("failed to copy file: {}", e);
+                        if let Err(e) = copy(&bin_file, &package_bin_file) {
+                            error!("failed to copy file(from {:?} to {:?}): {}", bin_file, package_bin_file, e);
                             return;
                         }
                     }
