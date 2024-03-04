@@ -1,6 +1,6 @@
 use colored::Colorize;
 
-use crate::tool::{fs::AppDir, kaleido, logger::error};
+use crate::tool::{fs::AppDir, global_input::GlobalInput, kaleido, logger::error};
 
 use super::helper::get_installed_packages;
 use super::installer::{install as install_packages, InstallRequest, InstallerContext};
@@ -42,7 +42,10 @@ pub async fn list_packages(name: String, app_dir: &AppDir) {
     };
 
     for request in requests {
-        match installed_packages.iter().find(|ip| ip.package.name == request.name) {
+        match installed_packages
+            .iter()
+            .find(|ip| ip.package.name == request.name)
+        {
             Some(installed_package) => {
                 println!(
                     "* {} - {}",
@@ -65,12 +68,17 @@ pub async fn list_packages(name: String, app_dir: &AppDir) {
     }
 }
 
-pub async fn install(name: String, app_dir: &AppDir, context: &InstallerContext) {
+pub async fn install(
+    name: String,
+    app_dir: &AppDir,
+    global_input: &mut GlobalInput<'_>,
+    context: &InstallerContext,
+) {
     let (requests, missing) = match get_packages(&name, app_dir) {
         Some(v) => v,
         None => return,
     };
-    install_packages(requests, app_dir, context).await;
+    install_packages(requests, app_dir, global_input, context).await;
 
     if !missing.is_empty() {
         println!();
@@ -99,8 +107,13 @@ pub async fn uninstall(name: String, app_dir: &AppDir) {
     }
 }
 
-pub async fn update(name: String, app_dir: &AppDir, context: &InstallerContext) {
-    install(name, app_dir, context).await;
+pub async fn update(
+    name: String,
+    app_dir: &AppDir,
+    global_input: &mut GlobalInput<'_>,
+    context: &InstallerContext,
+) {
+    install(name, app_dir, global_input, context).await;
 }
 
 fn get_packages(name: &str, app_dir: &AppDir) -> Option<(Vec<InstallRequest>, Vec<String>)> {
