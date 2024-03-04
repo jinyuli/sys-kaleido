@@ -19,14 +19,14 @@ pub fn upgrade() {
     match release_update.update() {
         Ok(s) => match s {
             self_update::Status::UpToDate(v) => {
-                println!("sys-kaleido has been updated to {}.", v);
+                println!("sys-kaleido {} is the latest version.", v);
             }
             self_update::Status::Updated(v) => {
-                println!("sys-kaleido {} is the latest version.", v);
+                println!("sys-kaleido has been updated to {}.", v);
             }
         },
         Err(e) => {
-            error!("failed to check update: {}", e);
+            error!("failed to upgrade: {}", e);
         }
     };
     });
