@@ -1,21 +1,20 @@
 use crate::{
     action::{
+        bindle::{
+            install as bindle_install, list as bindle_list, uninstall as bindle_uninstall,
+            update as bindle_update,
+        },
         config::{check_config, update as config_update},
         installer::{install, InstallRequest, InstallerContext},
         list::{list, list_all},
         search::search,
         uninstall::uninstall,
         upgrade::upgrade,
-        bindle::{
-            list as bindle_list,
-            install as bindle_install,
-            uninstall as bindle_uninstall,
-            update as bindle_update,
-        }
     },
     tool::{
         args,
         fs::AppDir,
+        global_input::GlobalInput,
         logger::{debug, init_logger},
     },
 };
@@ -25,32 +24,48 @@ mod tool;
 
 #[tokio::main]
 async fn main() {
+    let mut stdin = std::io::stdin();
+    let mut global_input = GlobalInput::new(&mut stdin);
     let app_dir = AppDir::new().unwrap();
     init_logger(app_dir.get_log_dir()).unwrap();
     let command: args::SysKaleidoCommand = argh::from_env();
     debug!("args: {:?}", command);
     match command.cmd {
         args::TopCommand::Search(cmd) => {
-            check_config(app_dir.get_home_dir()).await;
+            check_config(app_dir.get_home_dir(), &mut global_input).await;
             search(cmd.package, app_dir.get_home_dir());
         }
         args::TopCommand::Install(cmd) => {
-            check_config(app_dir.get_home_dir()).await;
+            check_config(app_dir.get_home_dir(), &mut global_input).await;
             let rust_abi = match cmd.rust_abi {
                 Some(abi) => abi,
                 None => default_abi(),
             };
-            let context = InstallerContext { rust_abi, force: cmd.force };
+            let context = InstallerContext {
+                rust_abi,
+                force: cmd.force,
+            };
             let requests: Vec<InstallRequest> = if cmd.packages.len() == 1 {
-                vec![InstallRequest{name: cmd.packages[0].clone(), version: cmd.version, alias: cmd.alias}]
+                vec![InstallRequest {
+                    name: cmd.packages[0].clone(),
+                    version: cmd.version,
+                    alias: cmd.alias,
+                }]
             } else {
-                cmd.packages.into_iter().map(|p| InstallRequest{ name: p, version: None, alias: None}).collect()
+                cmd.packages
+                    .into_iter()
+                    .map(|p| InstallRequest {
+                        name: p,
+                        version: None,
+                        alias: None,
+                    })
+                    .collect()
             };
 
-            install(requests, &app_dir, &context).await;
+            install(requests, &app_dir, &mut global_input, &context).await;
         }
         args::TopCommand::Bindle(cmd) => {
-            check_config(app_dir.get_home_dir()).await;
+            check_config(app_dir.get_home_dir(), &mut global_input).await;
             debug!("bindle command {:?}", cmd);
 
             match cmd.command {
@@ -59,8 +74,11 @@ async fn main() {
                         Some(abi) => abi,
                         None => default_abi(),
                     };
-                    let context = InstallerContext { rust_abi, force: cmd.force };
-                    bindle_install(cmd.name, &app_dir, &context).await;
+                    let context = InstallerContext {
+                        rust_abi,
+                        force: cmd.force,
+                    };
+                    bindle_install(cmd.name, &app_dir, &mut global_input, &context).await;
                 }
                 args::BindleSubCommand::Uninstall(cmd) => {
                     bindle_uninstall(cmd.name, &app_dir).await;
@@ -70,8 +88,11 @@ async fn main() {
                         Some(abi) => abi,
                         None => default_abi(),
                     };
-                    let context = InstallerContext { rust_abi, force: cmd.force };
-                    bindle_update(cmd.name, &app_dir, &context).await;
+                    let context = InstallerContext {
+                        rust_abi,
+                        force: cmd.force,
+                    };
+                    bindle_update(cmd.name, &app_dir, &mut global_input, &context).await;
                 }
                 args::BindleSubCommand::List(cmd) => {
                     bindle_list(cmd.name, &app_dir).await;
@@ -82,19 +103,33 @@ async fn main() {
             execute_version();
         }
         args::TopCommand::Update(cmd) => {
-            check_config(app_dir.get_home_dir()).await;
+            check_config(app_dir.get_home_dir(), &mut global_input).await;
             let rust_abi = match cmd.rust_abi {
                 Some(abi) => abi,
                 None => default_abi(),
             };
-            let context = InstallerContext { rust_abi, force: cmd.force };
+            let context = InstallerContext {
+                rust_abi,
+                force: cmd.force,
+            };
             let requests: Vec<InstallRequest> = if cmd.packages.len() == 1 {
-                vec![InstallRequest{name: cmd.packages[0].clone(), version: cmd.version, alias: cmd.alias}]
+                vec![InstallRequest {
+                    name: cmd.packages[0].clone(),
+                    version: cmd.version,
+                    alias: cmd.alias,
+                }]
             } else {
-                cmd.packages.into_iter().map(|p| InstallRequest{ name: p, version: None, alias: None}).collect()
+                cmd.packages
+                    .into_iter()
+                    .map(|p| InstallRequest {
+                        name: p,
+                        version: None,
+                        alias: None,
+                    })
+                    .collect()
             };
 
-            install(requests, &app_dir, &context).await;
+            install(requests, &app_dir, &mut global_input, &context).await;
         }
         args::TopCommand::Upgrade(_) => {
             upgrade();

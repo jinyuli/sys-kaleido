@@ -2,12 +2,9 @@ use super::{
     install::{Installer, InstallerContext},
     rust_bin_installer::RustBinInstaller,
 };
-use crate::tool::{fs::AppDir, kaleido};
+use crate::tool::{fs::AppDir, global_input::GlobalInput, kaleido};
 use log::{error, warn};
-use std::{
-    fs::{create_dir, remove_dir_all},
-    io::Stdin,
-};
+use std::fs::{create_dir, remove_dir_all};
 
 pub const LATEST_VERSION: &str = "LATEST";
 
@@ -18,16 +15,31 @@ pub struct InstallRequest {
     pub version: Option<String>,
 }
 
-pub async fn install(packages: Vec<InstallRequest>, app_dir: &AppDir, context: &InstallerContext) {
-
-    let mut stdin = std::io::stdin();
+pub async fn install<'a, 'b>(
+    packages: Vec<InstallRequest>,
+    app_dir: &AppDir,
+    global_input: &'b mut GlobalInput<'a>,
+    context: &InstallerContext,
+) where
+    'a: 'b,
+{
     for request in packages {
-        install_one(&mut stdin, &request, app_dir, context).await;
+        install_one(global_input, &request, app_dir, context).await;
     }
 }
 
-pub async fn install_one(stdin: &mut Stdin, request: &InstallRequest, app_dir: &AppDir, context: &InstallerContext) {
-    println!("=================install package {}=================", request.name);
+pub async fn install_one<'a, 'b>(
+    global_input: &'b mut GlobalInput<'a>,
+    request: &InstallRequest,
+    app_dir: &AppDir,
+    context: &InstallerContext,
+) where
+    'a: 'b,
+{
+    println!(
+        "=================install package {}=================",
+        request.name
+    );
     let home_dir = app_dir.get_home_dir();
     let kaleido = match kaleido::load_config(home_dir) {
         Ok(k) => k,
@@ -60,7 +72,7 @@ pub async fn install_one(stdin: &mut Stdin, request: &InstallRequest, app_dir: &
     match &package.language {
         Some(lang) => match lang.to_lowercase().as_str() {
             "rust" => {
-                RustBinInstaller::new(stdin)
+                RustBinInstaller::new(global_input)
                     .install(package, request, app_dir, context)
                     .await;
             }

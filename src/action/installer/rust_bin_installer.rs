@@ -5,23 +5,21 @@ use super::{
 };
 use crate::tool::{
     fs::{decompress, get_file_type, make_link, remove_link, AppDir, FileType},
+    global_input::GlobalInput,
     http::download_with_progress,
     kaleido::Package,
 };
 use log::{debug, error};
 use std::fs::{copy, create_dir_all, remove_dir_all, remove_file};
-use std::{
-    env::consts::EXE_EXTENSION,
-    io::{ErrorKind, Stdin},
-};
+use std::{env::consts::EXE_EXTENSION, io::Write};
 
-pub struct RustBinInstaller<'a> {
-    stdin: &'a mut Stdin,
+pub struct RustBinInstaller<'a, 'b> {
+    global_input: &'b mut GlobalInput<'a>,
 }
 
-impl<'a> RustBinInstaller<'a> {
-    pub fn new(stdin: &'a mut Stdin) -> Self {
-        RustBinInstaller { stdin }
+impl<'a, 'b> RustBinInstaller<'a, 'b> {
+    pub fn new(global_input: &'b mut GlobalInput<'a>) -> Self {
+        RustBinInstaller { global_input }
     }
 
     async fn install_package(
@@ -98,6 +96,7 @@ impl<'a> RustBinInstaller<'a> {
                 }
                 FileType::Compression => match decompress(&to_file, &tmp_dir) {
                     Ok(folder) => {
+                        debug!("decompress output: {:?}", folder);
                         let mut bin_file = match folder {
                             Some(f) => tmp_dir.join(f),
                             None => tmp_dir.clone(),
@@ -107,8 +106,11 @@ impl<'a> RustBinInstaller<'a> {
                         }
                         bin_file = bin_file.join(&package.bin_name);
                         bin_file.set_extension(EXE_EXTENSION);
-                        if let Err(e) = copy(bin_file, &package_bin_file) {
-                            error!("failed to copy file: {}", e);
+                        if let Err(e) = copy(&bin_file, &package_bin_file) {
+                            error!(
+                                "failed to copy file(from {:?} to {:?}): {}",
+                                bin_file, package_bin_file, e
+                            );
                             return;
                         }
                     }
@@ -150,7 +152,7 @@ impl<'a> RustBinInstaller<'a> {
     }
 }
 
-impl<'a> Installer for RustBinInstaller<'a> {
+impl<'a, 'b> Installer for RustBinInstaller<'a, 'b> {
     async fn install(
         &mut self,
         package: &Package,
@@ -182,19 +184,16 @@ impl<'a> Installer for RustBinInstaller<'a> {
                 .await;
         } else if app_release.source_url.is_some() {
             print!("cannot find appropriate package to install, would you like to install from source code? [y/n]");
-            let mut buffer = String::new();
-            loop {
-                match self.stdin.read_line(&mut buffer) {
-                    Ok(_) => break,
-                    Err(e) if e.kind() != ErrorKind::Interrupted => continue,
-                    Err(e) => {
-                        error!("failed to read from command: {}", e);
-                        return;
-                    }
+            let _ = std::io::stdout().flush();
+            let answer = match self.global_input.read_line() {
+                Ok(a) => a,
+                Err(e) => {
+                    error!("failed to read from command: {}", e);
+                    return;
                 }
-            }
-            debug!("install from source code? {}", buffer);
-            if buffer.to_lowercase() == "y" {
+            };
+            debug!("install from source code? {}", answer);
+            if answer == "y" {
                 let src_installer = RustSrcInstaller {};
                 src_installer
                     .install_package(&app_release, package, app_dir)
