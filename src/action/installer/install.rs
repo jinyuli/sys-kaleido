@@ -106,7 +106,7 @@ async fn find_github_release(gt: &Github, version: &str) -> Result<Option<Releas
     let mut page: u32 = 0;
     // assume that tag name is the version, or `v` + version
     let mut versions = vec![version.to_string()];
-    if !version.starts_with('v') {
+    if version != LATEST_VERSION && !version.starts_with('v') {
         versions.push(format!("v{}", version));
     }
     loop {

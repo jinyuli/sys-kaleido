@@ -33,7 +33,7 @@ async fn main() {
     match command.cmd {
         args::TopCommand::Search(cmd) => {
             check_config(app_dir.get_home_dir(), &mut global_input).await;
-            search(cmd.package, app_dir.get_home_dir());
+            search(cmd.package, &app_dir).await;
         }
         args::TopCommand::Install(cmd) => {
             check_config(app_dir.get_home_dir(), &mut global_input).await;

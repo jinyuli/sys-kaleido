@@ -55,7 +55,8 @@ pub async fn get_installed_packages(app_dir: &AppDir) -> Result<Vec<InstalledPac
                                     }
                                 }
                                 Err(e) => {
-                                    error!("failed to list directory: {}", e);
+                                    // ignore the error for a single file
+                                    debug!("failed to list directory: {}", e);
                                 }
                             }
                         } else {
