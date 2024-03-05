@@ -130,7 +130,7 @@ async fn get_installed_package(
 }
 
 #[cfg(target_os = "windows")]
-fn get_hardlinks(file: &Path, dir: &Path) -> std::io::Result<Vec<PathBuf>> {
+pub fn get_hardlinks(file: &Path, dir: &Path) -> std::io::Result<Vec<PathBuf>> {
     debug!("get hardlinks: {:?}", file);
     let r = std::process::Command::new("cmd.exe")
         .arg("/c")

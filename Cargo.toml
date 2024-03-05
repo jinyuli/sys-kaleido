@@ -31,9 +31,13 @@ thiserror = "1.0.57"
 tokio = { version="1.36.0", features = ["full"] }
 toml = "0.8.10"
 zip = "0.6.6"
+mockall = "0.12.1"
 
 [target.'cfg(target_arch = "aarch64")'.dependencies]
 openssl = { version = "0.10.63", features = ["vendored"] }
 
 [target.x86_64-unknown-linux-musl.dependencies]
 openssl = { version = "0.10.63", features = ["vendored"] }
+
+[dev-dependencies]
+tempfile = "3.10.1"

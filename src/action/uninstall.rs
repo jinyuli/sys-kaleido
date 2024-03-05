@@ -1,13 +1,13 @@
 use std::{
     fs::remove_dir_all,
-    path::{Path, PathBuf},
+    path::PathBuf,
 };
 
-use tokio::fs::{read_dir, read_link};
+use tokio::fs::read_dir;
 
 use crate::tool::{
     fs::{remove_link, AppDir},
-    logger::{debug, error},
+    logger::error,
 };
 
 pub async fn uninstall(package_names: Vec<String>, app_dir: &AppDir) {
@@ -16,16 +16,9 @@ pub async fn uninstall(package_names: Vec<String>, app_dir: &AppDir) {
         .map(|n| app_dir.get_packages_dir().join(n))
         .filter(|p| p.exists() && p.is_dir())
         .collect();
-    remove_linked_files(
-        app_dir.get_bin_dir(),
-        app_dir.get_packages_dir(),
+    remove_all_links(
         &package_paths,
-    )
-    .await;
-    remove_linked_files(
-        app_dir.get_alias_dir(),
-        app_dir.get_packages_dir(),
-        &package_paths,
+        app_dir,
     )
     .await;
     for package_path in package_paths {
@@ -35,50 +28,104 @@ pub async fn uninstall(package_names: Vec<String>, app_dir: &AppDir) {
     }
 }
 
-async fn remove_linked_files(
-    linked_files_in_dir: &Path,
-    packages_dir: &Path,
-    target_packages: &Vec<PathBuf>,
-) {
-    match read_dir(linked_files_in_dir).await {
-        Ok(mut entries) => {
-            loop {
-                match entries.next_entry().await {
-                    Ok(e) => {
-                        if let Some(entry) = e {
-                            let file_path = entry.path();
-                            if file_path.is_symlink() {
-                                match read_link(file_path).await {
-                                    Ok(p) => {
-                                        debug!("\tlink: {:?}", p);
-                                        if p.starts_with(packages_dir) {
+#[cfg(target_os="windows")]
+async fn remove_all_links(target_packages: &Vec<PathBuf>, app_dir: &AppDir) {
+    use super::helper::get_hardlinks;
+
+    for dir in [app_dir.get_bin_dir(), app_dir.get_alias_dir()] {
+        match read_dir(dir).await {
+            Ok(mut entries) => {
+                loop {
+                    match entries.next_entry().await {
+                        Ok(e) => {
+                            if let Some(entry) = e {
+                                let file_path = entry.path();
+                                if let Ok(links) = get_hardlinks(&file_path, dir) {
+                                    let mut is_desired = false;
+                                    'out_search:
+                                    for link in &links {
+                                        if link.starts_with(app_dir.get_packages_dir()) {
                                             for package_path in target_packages {
-                                                if p.starts_with(package_path) {
-                                                    if let Err(e) = remove_link(&p) {
-                                                        error!("failed to remove link({:?}), error: {}", p, e);
-                                                    }
+                                                if link.starts_with(package_path) {
+                                                    is_desired = true;
+                                                    break 'out_search;
                                                 }
                                             }
                                         }
                                     }
-                                    Err(e) => {
-                                        error!("failed to list directory: {}", e);
+                                    if is_desired {
+                                        for link in &links {
+                                            if link.starts_with(app_dir.get_bin_dir()) || link.starts_with(app_dir.get_alias_dir()) {
+                                                if let Err(e) = remove_link(link) {
+                                                    error!("failed to remove link({:?}), error: {}", link, e);
+                                                }
+                                            }
+                                        }
                                     }
                                 }
+                            } else {
+                                break;
                             }
-                        } else {
+                        }
+                        Err(e) => {
+                            error!("failed to list directory: {}", e);
                             break;
                         }
                     }
-                    Err(e) => {
-                        error!("failed to list directory: {}", e);
-                        break;
+                }
+            }
+            Err(e) => {
+                error!("failed to list directory: {}", e);
+            }
+        }
+    }
+}
+
+#[cfg(not(target_os="windows"))]
+async fn remove_all_links(target_packages: &Vec<PathBuf>, app_dir: &AppDir) {
+    use tokio::fs::read_link;
+    use crate::tool::logger::debug;
+    for dir in [app_dir.get_bin_dir(), app_dir.get_alias_dir()] {
+        match read_dir(dir).await {
+            Ok(mut entries) => {
+                loop {
+                    match entries.next_entry().await {
+                        Ok(e) => {
+                            if let Some(entry) = e {
+                                let file_path = entry.path();
+                                if file_path.is_symlink() {
+                                    match read_link(file_path).await {
+                                        Ok(p) => {
+                                            debug!("\tlink: {:?}", p);
+                                            if p.starts_with(app_dir.get_packages_dir()) {
+                                                for package_path in target_packages {
+                                                    if p.starts_with(package_path) {
+                                                        if let Err(e) = remove_link(&p) {
+                                                            error!("failed to remove link({:?}), error: {}", p, e);
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        Err(e) => {
+                                            error!("failed to list directory: {}", e);
+                                        }
+                                    }
+                                }
+                            } else {
+                                break;
+                            }
+                        }
+                        Err(e) => {
+                            error!("failed to list directory: {}", e);
+                            break;
+                        }
                     }
                 }
             }
-        }
-        Err(e) => {
-            error!("failed to list directory: {}", e);
+            Err(e) => {
+                error!("failed to list directory: {}", e);
+            }
         }
     }
 }

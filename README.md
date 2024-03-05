@@ -141,8 +141,8 @@ $ sys-kaleido bindle install core
 
 supported tools:
 
-    * [dust](https://github.com/bootandy/dust)
-    * [lsd](https://github.com/lsd-rs/lsd)
-    * [fnc](https://github.com/supercilex/fuc)
-    * [bat](https://github.com/sharkdp/bat)
+* [dust](https://github.com/bootandy/dust)
+* [lsd](https://github.com/lsd-rs/lsd)
+* [fnc](https://github.com/supercilex/fuc)
+* [bat](https://github.com/sharkdp/bat)
 

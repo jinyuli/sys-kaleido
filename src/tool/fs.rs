@@ -49,7 +49,6 @@ impl AppDir {
                 fs::create_dir(&log_dir)?;
             }
 
-
             Ok(AppDir {
                 home_dir: home,
                 log_dir,
@@ -83,7 +82,7 @@ impl AppDir {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FileType {
     Compression,
     Plain,
@@ -92,19 +91,15 @@ pub enum FileType {
 
 pub fn get_file_type<T: AsRef<Path>>(file_name: T) -> FileType {
     match file_name.as_ref().extension() {
-        Some(ext) => {
-            match ext.to_str() {
-                Some(e) => {
-                    match e {
-                        "" => FileType::Plain,
-                        "zip" => FileType::Compression,
-                        "7z" => FileType::Compression,
-                        "gz" => FileType::Compression,
-                        _ => FileType::Unknown,
-                    }
-                },
-                None => FileType::Unknown,
-            }
+        Some(ext) => match ext.to_str() {
+            Some(e) => match e {
+                "" => FileType::Plain,
+                "zip" => FileType::Compression,
+                "7z" => FileType::Compression,
+                "gz" => FileType::Compression,
+                _ => FileType::Unknown,
+            },
+            None => FileType::Unknown,
         },
         None => FileType::Plain,
     }
@@ -152,9 +147,7 @@ fn deflate(file_path: &Path, to_path: &Path) -> Result<Option<String>> {
     let tar = GzDecoder::new(tar_gz);
     let mut archive = Archive::new(tar);
     let top_folder: Option<PathBuf> = match archive.entries()?.filter_map(|e| e.ok()).next() {
-        Some(v) => {
-            Some(v.path()?.into_owned().clone())
-        },
+        Some(v) => Some(v.path()?.into_owned().clone()),
         None => None,
     };
 
@@ -163,16 +156,19 @@ fn deflate(file_path: &Path, to_path: &Path) -> Result<Option<String>> {
             let mut components = p.components();
             let top = match components.next() {
                 Some(c) => {
-                    if c == Component::RootDir || c == Component::CurDir || c == Component::ParentDir {
+                    if c == Component::RootDir
+                        || c == Component::CurDir
+                        || c == Component::ParentDir
+                    {
                         components.next()
                     } else {
                         Some(c)
                     }
-                },
+                }
                 None => None,
             };
             Ok(top.map(|t| t.as_os_str().to_str().unwrap().to_string()))
-        },
+        }
         None => Ok(None),
     }
 }
@@ -251,27 +247,29 @@ fn unzip(file_path: &Path, to_path: &Path) -> Result<Option<String>> {
 }
 
 #[cfg(target_os = "windows")]
-pub fn make_file_link(link_file: &Path, origin_file: &Path) -> Result<()> {
+pub fn make_file_link<T: AsRef<Path>, S: AsRef<Path>>(link_file: T, origin_file: S) -> Result<()> {
     use log::error;
     use std::fs::remove_file;
     use std::os::windows::fs::symlink_file;
 
-    debug!("make file link from {:?} to {:?}", link_file, origin_file);
-    if let Err(err) = symlink_file(origin_file, link_file) {
+    let link_path = link_file.as_ref();
+    let origin_path = origin_file.as_ref();
+    debug!("make file link from {:?} to {:?}", link_path, origin_path);
+    if let Err(err) = symlink_file(origin_path, link_path) {
         debug!("failed to make symlink: {}, try cmd", err);
-        if link_file.exists() {
-            if link_file.is_symlink() {
-                remove_link(link_file)?
+        if link_path.exists() {
+            if link_path.is_symlink() {
+                remove_link(link_path)?
             } else {
-                remove_file(link_file)?;
+                remove_file(link_path)?;
             }
         }
         let status = std::process::Command::new("cmd.exe")
             .arg("/c")
             .arg("mklink")
             .arg("/h")
-            .arg(link_file)
-            .arg(origin_file)
+            .arg(link_path)
+            .arg(origin_path)
             .stdout(std::process::Stdio::null())
             .status()?;
         if !status.success() {
@@ -286,23 +284,26 @@ pub fn make_file_link(link_file: &Path, origin_file: &Path) -> Result<()> {
 }
 
 #[cfg(target_os = "windows")]
-pub fn make_dir_link(link_dir: &Path, origin_dir: &Path) -> Result<()> {
+pub fn make_dir_link<T: AsRef<Path>, S: AsRef<Path>>(link_dir: T, origin_dir: S) -> Result<()> {
     use log::error;
     use std::fs::remove_dir;
     use std::os::windows::fs::symlink_dir;
 
-    debug!("make dir link from {:?} to {:?}", link_dir, origin_dir);
-    if let Err(err) = symlink_dir(origin_dir, link_dir) {
+    let link_path = link_dir.as_ref();
+    let origin_path = origin_dir.as_ref();
+    debug!("make dir link from {:?} to {:?}", link_path, origin_path);
+    if let Err(err) = symlink_dir(origin_path, link_path) {
         debug!("failed to make symlink: {}, try cmd", err);
-        if link_dir.exists() {
-            remove_dir(link_dir)?;
+        if link_dir.as_ref().exists() {
+            remove_dir(link_path)?;
         }
         let status = std::process::Command::new("cmd.exe")
             .arg("/c")
             .arg("mklink")
             .arg("/j")
-            .arg(link_dir)
-            .arg(origin_dir)
+            .arg(link_path)
+            .arg(origin_path)
+            .stdout(std::process::Stdio::null())
             .status()?;
         if !status.success() {
             error!("cmd mklink failed, status: {:?}", status.code());
@@ -316,8 +317,8 @@ pub fn make_dir_link(link_dir: &Path, origin_dir: &Path) -> Result<()> {
 }
 
 #[cfg(target_os = "windows")]
-pub fn make_link(link_dir: &Path, origin_dir: &Path) -> Result<()> {
-    if origin_dir.is_dir() {
+pub fn make_link<T: AsRef<Path>, S: AsRef<Path>>(link_dir: T, origin_dir: S) -> Result<()> {
+    if origin_dir.as_ref().is_dir() {
         make_dir_link(link_dir, origin_dir)
     } else {
         make_file_link(link_dir, origin_dir)
@@ -365,3 +366,59 @@ pub enum FSError {
     UnsupportedFile(&'static str),
 }
 
+#[cfg(test)]
+mod test {
+    use super::*;
+    use std::{
+        fs::{create_dir, File},
+        io::Write,
+    };
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_get_file_type() {
+        assert_eq!(FileType::Plain, get_file_type("path/test"));
+        assert_eq!(FileType::Compression, get_file_type("path/test.zip"));
+        assert_eq!(FileType::Compression, get_file_type("path/test.7z"));
+        assert_eq!(FileType::Compression, get_file_type("path/test.tar.gz"));
+        assert_eq!(FileType::Unknown, get_file_type("path/test.x"));
+    }
+
+    #[test]
+    fn test_make_link_file() -> std::result::Result<(), FSError> {
+        let dir = tempdir()?;
+        let file_path = dir.path().join("origin");
+        let mut file = File::create(&file_path)?;
+        writeln!(file, "test")?;
+        drop(file);
+
+        let link_path = dir.path().join("link");
+        assert!(!link_path.exists());
+        make_link(&link_path, &file_path)?;
+        assert!(link_path.exists());
+        if cfg!(target_os = "windows") {
+            assert!(link_path.is_file());
+        } else {
+            assert!(link_path.is_symlink());
+        }
+
+        dir.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_make_link_dir() -> std::result::Result<(), FSError> {
+        let dir = tempdir()?;
+        let file_path = dir.path().join("origin_dir");
+        create_dir(&file_path)?;
+
+        let link_path = dir.path().join("link_dir");
+        assert!(!link_path.exists());
+        make_link(&link_path, &file_path)?;
+        assert!(link_path.exists());
+        assert!(link_path.is_symlink());
+
+        dir.close()?;
+        Ok(())
+    }
+}
