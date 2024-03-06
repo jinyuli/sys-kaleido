@@ -54,6 +54,9 @@ pub async fn list_all(app_dir: &AppDir) {
             if !desc.is_empty() {
                 print!(" - {}", desc);
             }
+            print!(" [{}]", package.url);
+        } else if !package.url.is_empty() {
+            print!(" - [{}]", package.url);
         }
         println!()
     }

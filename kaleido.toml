@@ -162,6 +162,17 @@ description = "a modern, maintained replacement for ls"
 org = "eza-community"
 repo = "eza"
 
+[[packages]]
+name = "hex"
+url = "https://github.com/sitkevij/hex"
+version = "0.6.0"
+language = "rust"
+bin_name = "hx"
+description = "futuristic take on hexdump"
+[packages.github]
+org = "sitkevij"
+repo = "hex"
+
 [[bindles]]
 name = "core"
 packages = [
@@ -177,4 +188,5 @@ packages = [
     { name = "zoxide", alias = "cd" },
     { name = "procs", alias = "ps" },
     { name = "eza", alias = "ls" },
+    { name = "hex" },
 ]
