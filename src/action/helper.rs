@@ -105,17 +105,23 @@ async fn get_installed_package(
             if p.starts_with(dir) {
                 let ancestors = p.ancestors();
                 let mut child = p.as_path();
+                // the path for a installed package: .sys-kaleido/packages/app_name/version/.......
                 for a in ancestors {
                     if a == dir {
                         if let Some(file_name) = get_file_name(child) {
                             if let Some(package) = package_map.get(&file_name) {
-                                if let Some(v) = get_file_name(
-                                    p.parent().expect("linked file point to nowhere?"),
-                                ) {
-                                    return Ok(Some(InstalledPackage {
-                                        package: (*package).clone(),
-                                        version: v,
-                                    }));
+                                let mut q = p.as_path();
+                                while let Some(version_path) = q.parent() {
+                                    if version_path.parent() == Some(child) {
+                                        if let Some(v) = get_file_name(version_path) {
+                                            return Ok(Some(InstalledPackage {
+                                                package: (*package).clone(),
+                                                version: v,
+                                            }));
+                                        }
+                                        break;
+                                    }
+                                    q = version_path;
                                 }
                             }
                         }

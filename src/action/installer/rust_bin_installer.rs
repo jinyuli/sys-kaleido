@@ -9,6 +9,7 @@ use crate::tool::{
     http::download_with_progress,
     kaleido::Package,
 };
+use colored::Colorize;
 use log::{debug, error};
 use std::fs::{copy, create_dir_all, remove_dir_all, remove_file};
 use std::{env::consts::EXE_EXTENSION, io::Write};
@@ -149,6 +150,11 @@ impl<'a, 'b> RustBinInstaller<'a, 'b> {
         }
 
         let _ = remove_dir_all(tmp_dir);
+        println!(
+            "the package {} with version {} has been installed",
+            package.name.green(),
+            release.version.green()
+        );
     }
 }
 
