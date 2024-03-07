@@ -11,7 +11,7 @@ use std::fs::{copy, create_dir_all, remove_dir_all, remove_file};
 pub struct RustSrcInstaller {}
 
 impl RustSrcInstaller {
-    pub async fn install_package(&self, app_release: &AppRelease, package: &Package, app_dir: &AppDir) -> std::result::Result<(), InstallError> {
+    pub async fn install_package(&self, app_release: &AppRelease, package: &Package, alias: &Option<String>, app_dir: &AppDir) -> std::result::Result<(), InstallError> {
         let source_url = app_release.source_url.as_ref().unwrap();
         let tmp_dir = app_dir.get_home_dir().join("tmp");
         let file_name = format!("{}.zip", app_release.version);
@@ -66,13 +66,22 @@ impl RustSrcInstaller {
                     .join(&package.bin_name);
                 bin_file.set_extension(EXE_EXTENSION);
                 copy(&bin_file, &package_bin_file)?;
+
                 let mut sys_bin_file = app_dir.get_bin_dir().join(&package.bin_name);
                 sys_bin_file.set_extension(EXE_EXTENSION);
                 if sys_bin_file.exists() && sys_bin_file.is_file() {
                     remove_link(&sys_bin_file)?;
                 }
-
                 make_link(&sys_bin_file, &package_bin_file)?;
+
+                if let Some(alias_str) = alias {
+                    let mut sys_bin_file = app_dir.get_alias_dir().join(alias_str);
+                    sys_bin_file.set_extension(EXE_EXTENSION);
+                    if sys_bin_file.exists() && sys_bin_file.is_file() {
+                        remove_link(&sys_bin_file)?;
+                    }
+                    make_link(&sys_bin_file, &package_bin_file)?;
+                }
 
                 let _ = remove_dir_all(tmp_dir);
             }

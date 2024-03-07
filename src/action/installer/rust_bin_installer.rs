@@ -27,6 +27,7 @@ impl<'a, 'b> RustBinInstaller<'a, 'b> {
         &self,
         release: &AppRelease,
         package: &Package,
+        alias: &Option<String>,
         app_dir: &AppDir,
         force_install: bool,
     ) -> std::result::Result<(), InstallError> {
@@ -121,8 +122,16 @@ impl<'a, 'b> RustBinInstaller<'a, 'b> {
         if sys_bin_file.exists() && sys_bin_file.is_file() {
             remove_link(&sys_bin_file)?;
         }
-
         make_link(&sys_bin_file, &package_bin_file)?;
+
+        if let Some(alias_str) = alias {
+            let mut sys_bin_file = app_dir.get_alias_dir().join(alias_str);
+            sys_bin_file.set_extension(EXE_EXTENSION);
+            if sys_bin_file.exists() && sys_bin_file.is_file() {
+                remove_link(&sys_bin_file)?;
+            }
+            make_link(&sys_bin_file, &package_bin_file)?;
+        }
 
         let _ = remove_dir_all(tmp_dir);
         Ok(())
@@ -157,7 +166,7 @@ impl<'a, 'b> Installer for RustBinInstaller<'a, 'b> {
         };
 
         if !app_release.assets.is_empty() {
-            if let Err(e) = self.install_package(&app_release, package, app_dir, context.force)
+            if let Err(e) = self.install_package(&app_release, package, &request.alias, app_dir, context.force)
                 .await {
                     println!("{}", format!("failed to install {}: {}", package.name, e).red());
                 } else {
@@ -181,7 +190,7 @@ impl<'a, 'b> Installer for RustBinInstaller<'a, 'b> {
             if answer == "y" {
                 let src_installer = RustSrcInstaller {};
                 if let Err(e) = src_installer
-                    .install_package(&app_release, package, app_dir)
+                    .install_package(&app_release, package, &request.alias, app_dir)
                     .await {
                         println!("{}", format!("failed to install from source code {}: {}", package.name, e).red());
                     } else {
