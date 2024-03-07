@@ -473,6 +473,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(target_os="windows")]
     fn test_find_common_parent() {
         let root = Path::new("C:\\Users\\kaleido\\.sys-kaleido\\tmp");
         let s = "C:\\Users\\kaleido\\.sys-kaleido\\tmp\\a";
@@ -483,6 +484,21 @@ mod test {
         assert_eq!(find_common_parent(t, s, root), Path::new(s));
         let s = "C:\\Users\\kaleido\\.sys-kaleido\\tmp\\b\\c";
         let t = "C:\\Users\\kaleido\\.sys-kaleido\\tmp\\a\\b";
+        assert_eq!(find_common_parent(t, s, root), root);
+    }
+
+    #[test]
+    #[cfg(not(target_os="windows"))]
+    fn test_find_common_parent() {
+        let root = Path::new("/home/kaleido/.sys-kaleido/tmp");
+        let s = "/home/kaleido/.sys-kaleido/tmp/a";
+        let t = "/home/kaleido/.sys-kaleido/tmp/a/b";
+        assert_eq!(find_common_parent(t, s, root), Path::new(s));
+        let s = "/home/kaleido/.sys-kaleido/tmp/a/b";
+        let t = "/home/kaleido/.sys-kaleido/tmp/a/b";
+        assert_eq!(find_common_parent(t, s, root), Path::new(s));
+        let s = "/home/kaleido/.sys-kaleido/tmp/b/c";
+        let t = "/home/kaleido/.sys-kaleido/tmp/a/b";
         assert_eq!(find_common_parent(t, s, root), root);
     }
 }

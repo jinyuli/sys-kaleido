@@ -1,5 +1,6 @@
 use std::io::{Stdin, ErrorKind, Result};
 use super::logger::debug;
+
 #[derive(Debug)]
 pub struct GlobalInput<'a> {
     stdin: &'a mut Stdin,

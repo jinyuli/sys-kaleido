@@ -2092,9 +2092,10 @@ checksum = "2047c6ded9c721764247e62cd3b03c09ffc529b2ba5b10ec482ae507a4a70160"
 
 [[package]]
 name = "sys-kaleido"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "argh",
+ "cfg-if",
  "colored",
  "directories",
  "flate2",
