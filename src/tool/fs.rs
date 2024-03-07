@@ -212,22 +212,28 @@ fn unzip(file_path: &Path, to_path: &Path) -> Result<Option<String>> {
                 println!("file {i} comment: {comment}");
             }
         }
-        if (*item.name()).ends_with('/') {
-            if top_folder.is_none()
-                || top_folder
-                    .as_ref()
-                    .is_some_and(|f: &String| f.len() > item.name().len())
-            {
-                top_folder = Some(item.name().to_string());
+        let child_path = if (*item.name()).ends_with('/') {
+            Some(outpath.as_path())
+        } else {
+            outpath.parent()
+        };
+        match &top_path {
+            Some(top) => {
+                if let Some(child) = child_path {
+                    top_path = Some(find_common_parent(top, child, to_path));
+                }
             }
+            None => {
+                top_path = child_path.map(|f| f.to_path_buf());
+            }
+        }
+
+        if (*item.name()).ends_with('/') {
             fs::create_dir_all(&outpath)?
         } else {
             if let Some(p) = outpath.parent() {
                 if !p.exists() {
                     fs::create_dir_all(p)?
-                }
-                if top_path.is_none() || top_path.as_ref().is_some_and(|t| t.starts_with(p)) {
-                    top_path = Some(p.to_path_buf());
                 }
             }
             let mut outfile = fs::File::create(&outpath)?;
@@ -244,6 +250,47 @@ fn unzip(file_path: &Path, to_path: &Path) -> Result<Option<String>> {
         }
     }
     Ok(top_folder)
+}
+
+fn find_common_parent<T: AsRef<Path>, S: AsRef<Path>>(t: T, s: S, root: &Path) -> PathBuf {
+    let t_path = t.as_ref();
+    let s_path = s.as_ref();
+    if t_path.starts_with(s_path) {
+        s_path.to_path_buf()
+    } else if s_path.starts_with(t_path) {
+        t_path.to_path_buf()
+    } else {
+        let mut top_parents = vec![];
+        let mut parent = t_path;
+        top_parents.push(parent);
+        while let Some(p) = parent.parent() {
+            if root.starts_with(p) {
+                break;
+            }
+            top_parents.insert(0, p);
+            parent = p;
+        }
+
+        let mut child_parents = vec![];
+        parent = s_path;
+        child_parents.push(parent);
+        while let Some(p) = parent.parent() {
+            if root.starts_with(p) {
+                break;
+            }
+            child_parents.insert(0, p);
+            parent = p;
+        }
+        let mut i = 0;
+        while i < top_parents.len() && i < child_parents.len() {
+            if top_parents[i] != child_parents[i] {
+                break;
+            }
+            i += 1;
+        }
+        let common_parent = if i == 0 { root } else { top_parents[i - 1] };
+        common_parent.to_path_buf()
+    }
 }
 
 #[cfg(target_os = "windows")]
@@ -420,5 +467,19 @@ mod test {
 
         dir.close()?;
         Ok(())
+    }
+
+    #[test]
+    fn test_find_common_parent() {
+        let root = Path::new("C:\\Users\\kaleido\\.sys-kaleido\\tmp");
+        let s = "C:\\Users\\kaleido\\.sys-kaleido\\tmp\\a";
+        let t = "C:\\Users\\kaleido\\.sys-kaleido\\tmp\\a\\b";
+        assert_eq!(find_common_parent(t, s, root), Path::new(s));
+        let s = "C:\\Users\\kaleido\\.sys-kaleido\\tmp\\a\\b";
+        let t = "C:\\Users\\kaleido\\.sys-kaleido\\tmp\\a\\b";
+        assert_eq!(find_common_parent(t, s, root), Path::new(s));
+        let s = "C:\\Users\\kaleido\\.sys-kaleido\\tmp\\b\\c";
+        let t = "C:\\Users\\kaleido\\.sys-kaleido\\tmp\\a\\b";
+        assert_eq!(find_common_parent(t, s, root), root);
     }
 }

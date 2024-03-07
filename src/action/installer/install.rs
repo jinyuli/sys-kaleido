@@ -1,7 +1,8 @@
 use super::execute::{InstallRequest, LATEST_VERSION};
 use crate::tool::{
-    fs::AppDir,
+    fs::{AppDir, FSError},
     kaleido::{Github, Package},
+    http,
 };
 use log::{debug, error};
 use octocrab::models::repos::Release;
@@ -162,9 +163,13 @@ fn to_github_arch(arch: &str) -> &str {
 
 #[derive(Error, Debug)]
 pub enum InstallError {
-    #[error("http error: {0}")]
-    Http(#[from] reqwest::Error),
-    #[error("file system error: {0}")]
+    #[error("{0}")]
+    Reqwest(#[from] reqwest::Error),
+    #[error("{0}")]
+    ToolFs(#[from] FSError),
+    #[error("{0}")]
+    Http(#[from] http::HttpError),
+    #[error("{0}")]
     FileSystem(#[from] std::io::Error),
     #[error("{0}")]
     General(String),

@@ -1,6 +1,6 @@
 use super::{
     execute::{InstallRequest, LATEST_VERSION},
-    install::{find_assets, AppRelease, Installer, InstallerContext},
+    install::{find_assets, AppRelease, InstallError, Installer, InstallerContext},
     rust_src_installer::RustSrcInstaller,
 };
 use crate::tool::{
@@ -29,15 +29,16 @@ impl<'a, 'b> RustBinInstaller<'a, 'b> {
         package: &Package,
         app_dir: &AppDir,
         force_install: bool,
-    ) {
+    ) -> std::result::Result<(), InstallError> {
         let asset = &release.assets[0];
         let tmp_dir = app_dir.get_home_dir().join("tmp");
         let to_file = tmp_dir.join(&asset.name);
         if to_file.exists() && to_file.is_file() {
-            if let Err(e) = remove_file(&to_file) {
-                error!("failed to delete file({:?}): {}", to_file, e);
-                return;
-            }
+            remove_file(&to_file)?;
+            // if let Err(e) = remove_file(&to_file) {
+            //     error!("failed to delete file({:?}): {}", to_file, e);
+            //     return;
+            // }
         }
 
         let package_dir = app_dir
@@ -50,28 +51,30 @@ impl<'a, 'b> RustBinInstaller<'a, 'b> {
 
         if package_dir.exists() && package_dir.is_dir() {
             if force_install {
-                if let Err(e) = remove_dir_all(&package_dir) {
-                    error!("failed to delete dir({:?}): {}", package_dir, e);
-                    return;
-                }
+                remove_dir_all(&package_dir)?;
+                // if let Err(e) = remove_dir_all(&package_dir) {
+                //     error!("failed to delete dir({:?}): {}", package_dir, e);
+                //     return;
+                // }
             } else if package_bin_file.exists() && package_bin_file.is_file() {
                 println!(
                     "the package {} with version {} is already installed, skip it",
                     package.name, release.version
                 );
-                return;
+                return Ok(());
             }
         }
+        download_with_progress(to_file, asset.download_url.as_str()).await?;
+        // if let Err(e) = download_with_progress(to_file, asset.download_url.as_str()).await {
+        //     error!("failed to download file: {}", e);
+        //     return;
+        // }
 
-        if let Err(e) = download_with_progress(to_file, asset.download_url.as_str()).await {
-            error!("failed to download file: {}", e);
-            return;
-        }
-
-        if let Err(e) = create_dir_all(&package_dir) {
-            error!("failed to create dir({:?}): {}", package_dir, e);
-            return;
-        }
+        create_dir_all(&package_dir)?;
+        // if let Err(e) = create_dir_all(&package_dir) {
+        //     error!("failed to create dir({:?}): {}", package_dir, e);
+        //     return;
+        // }
 
         let to_file = tmp_dir.join(&asset.name);
         let exe_ext = format!(".{}", EXE_EXTENSION);
@@ -82,18 +85,19 @@ impl<'a, 'b> RustBinInstaller<'a, 'b> {
             asset.name.ends_with(&exe_ext)
         );
         if !EXE_EXTENSION.is_empty() && asset.name.ends_with(&exe_ext) {
-            if let Err(e) = copy(&to_file, &package_bin_file) {
-                error!(
-                    "failed to copy file(from {:?} to {:?}): {}",
-                    to_file, package_bin_file, e
-                );
-                return;
-            }
+            copy(&to_file, &package_bin_file)?;
+            // if let Err(e) = copy(&to_file, &package_bin_file) {
+            //     error!(
+            //         "failed to copy file(from {:?} to {:?}): {}",
+            //         to_file, package_bin_file, e
+            //     );
+            //     return;
+            // }
         } else {
             match get_file_type(&asset.name) {
                 FileType::Unknown => {
-                    error!("unsupported file type: {}", asset.name);
-                    return;
+                    // error!("unsupported file type: {}", asset.name);
+                    return Err(InstallError::GeneralStr("unsupported file type"));
                 }
                 FileType::Compression => match decompress(&to_file, &tmp_dir) {
                     Ok(folder) => {
@@ -107,27 +111,29 @@ impl<'a, 'b> RustBinInstaller<'a, 'b> {
                         }
                         bin_file = bin_file.join(&package.bin_name);
                         bin_file.set_extension(EXE_EXTENSION);
-                        if let Err(e) = copy(&bin_file, &package_bin_file) {
-                            error!(
-                                "failed to copy file(from {:?} to {:?}): {}",
-                                bin_file, package_bin_file, e
-                            );
-                            return;
-                        }
+                        copy(&bin_file, &package_bin_file)?;
+                        // if let Err(e) = copy(&bin_file, &package_bin_file) {
+                        //     error!(
+                        //         "failed to copy file(from {:?} to {:?}): {}",
+                        //         bin_file, package_bin_file, e
+                        //     );
+                        //     return;
+                        // }
                     }
                     Err(e) => {
-                        error!("failed to decompress the file: {}", e);
-                        return;
+                        // error!("failed to decompress the file: {}", e);
+                        return Err(InstallError::ToolFs(e));
                     }
                 },
                 FileType::Plain => {
-                    if let Err(e) = copy(&to_file, &package_bin_file) {
-                        error!(
-                            "failed to copy file(from {:?} to {:?}): {}",
-                            to_file, &package_bin_file, e
-                        );
-                        return;
-                    }
+                    copy(&to_file, &package_bin_file)?;
+                    // if let Err(e) = copy(&to_file, &package_bin_file) {
+                    //     error!(
+                    //         "failed to copy file(from {:?} to {:?}): {}",
+                    //         to_file, &package_bin_file, e
+                    //     );
+                    //     return;
+                    // }
                 }
             }
         }
@@ -135,26 +141,29 @@ impl<'a, 'b> RustBinInstaller<'a, 'b> {
         let mut sys_bin_file = app_dir.get_bin_dir().join(&package.bin_name);
         sys_bin_file.set_extension(EXE_EXTENSION);
         if sys_bin_file.exists() && sys_bin_file.is_file() {
-            if let Err(e) = remove_link(&sys_bin_file) {
-                error!("failed to remove link file({:?}): {}", &sys_bin_file, e);
-                return;
-            }
+            remove_link(&sys_bin_file)?;
+            // if let Err(e) = remove_link(&sys_bin_file) {
+            //     error!("failed to remove link file({:?}): {}", &sys_bin_file, e);
+            //     return;
+            // }
         }
 
-        if let Err(e) = make_link(&sys_bin_file, &package_bin_file) {
-            error!(
-                "failed to make link(from {:?} to {:?}): {}",
-                sys_bin_file, package_bin_file, e
-            );
-            return;
-        }
+        make_link(&sys_bin_file, &package_bin_file)?;
+        // if let Err(e) = make_link(&sys_bin_file, &package_bin_file) {
+        //     error!(
+        //         "failed to make link(from {:?} to {:?}): {}",
+        //         sys_bin_file, package_bin_file, e
+        //     );
+        //     return;
+        // }
 
         let _ = remove_dir_all(tmp_dir);
-        println!(
-            "the package {} with version {} has been installed",
-            package.name.green(),
-            release.version.green()
-        );
+        // println!(
+        //     "the package {} with version {} has been installed",
+        //     package.name.green(),
+        //     release.version.green()
+        // );
+        Ok(())
     }
 }
 
@@ -186,8 +195,16 @@ impl<'a, 'b> Installer for RustBinInstaller<'a, 'b> {
         };
 
         if !app_release.assets.is_empty() {
-            self.install_package(&app_release, package, app_dir, context.force)
-                .await;
+            if let Err(e) = self.install_package(&app_release, package, app_dir, context.force)
+                .await {
+                    println!("{}", format!("failed to install {}: {}", package.name, e).red());
+                } else {
+                        println!(
+                            "the package {} with version {} has been installed",
+                            package.name.green(),
+                            app_release.version.green()
+                        );
+                }
         } else if app_release.source_url.is_some() {
             print!("cannot find appropriate package to install, would you like to install from source code? [y/n]");
             let _ = std::io::stdout().flush();
@@ -201,12 +218,20 @@ impl<'a, 'b> Installer for RustBinInstaller<'a, 'b> {
             debug!("install from source code? {}", answer);
             if answer == "y" {
                 let src_installer = RustSrcInstaller {};
-                src_installer
+                if let Err(e) = src_installer
                     .install_package(&app_release, package, app_dir)
-                    .await;
+                    .await {
+                        println!("{}", format!("failed to install from source code {}: {}", package.name, e).red());
+                    } else {
+                        println!(
+                            "the package {} with version {} has been installed",
+                            package.name.green(),
+                            app_release.version.green()
+                        );
+                    }
             }
         } else {
-            println!("cannot find appropriate package to install");
+            println!("{}", "cannot find appropriate package to install".red());
         }
     }
 }
