@@ -86,13 +86,6 @@ impl<'a, 'b> RustBinInstaller<'a, 'b> {
         );
         if !EXE_EXTENSION.is_empty() && asset.name.ends_with(&exe_ext) {
             copy(&to_file, &package_bin_file)?;
-            // if let Err(e) = copy(&to_file, &package_bin_file) {
-            //     error!(
-            //         "failed to copy file(from {:?} to {:?}): {}",
-            //         to_file, package_bin_file, e
-            //     );
-            //     return;
-            // }
         } else {
             match get_file_type(&asset.name) {
                 FileType::Unknown => {
@@ -112,28 +105,13 @@ impl<'a, 'b> RustBinInstaller<'a, 'b> {
                         bin_file = bin_file.join(&package.bin_name);
                         bin_file.set_extension(EXE_EXTENSION);
                         copy(&bin_file, &package_bin_file)?;
-                        // if let Err(e) = copy(&bin_file, &package_bin_file) {
-                        //     error!(
-                        //         "failed to copy file(from {:?} to {:?}): {}",
-                        //         bin_file, package_bin_file, e
-                        //     );
-                        //     return;
-                        // }
                     }
                     Err(e) => {
-                        // error!("failed to decompress the file: {}", e);
                         return Err(InstallError::ToolFs(e));
                     }
                 },
                 FileType::Plain => {
                     copy(&to_file, &package_bin_file)?;
-                    // if let Err(e) = copy(&to_file, &package_bin_file) {
-                    //     error!(
-                    //         "failed to copy file(from {:?} to {:?}): {}",
-                    //         to_file, &package_bin_file, e
-                    //     );
-                    //     return;
-                    // }
                 }
             }
         }
@@ -142,27 +120,11 @@ impl<'a, 'b> RustBinInstaller<'a, 'b> {
         sys_bin_file.set_extension(EXE_EXTENSION);
         if sys_bin_file.exists() && sys_bin_file.is_file() {
             remove_link(&sys_bin_file)?;
-            // if let Err(e) = remove_link(&sys_bin_file) {
-            //     error!("failed to remove link file({:?}): {}", &sys_bin_file, e);
-            //     return;
-            // }
         }
 
         make_link(&sys_bin_file, &package_bin_file)?;
-        // if let Err(e) = make_link(&sys_bin_file, &package_bin_file) {
-        //     error!(
-        //         "failed to make link(from {:?} to {:?}): {}",
-        //         sys_bin_file, package_bin_file, e
-        //     );
-        //     return;
-        // }
 
         let _ = remove_dir_all(tmp_dir);
-        // println!(
-        //     "the package {} with version {} has been installed",
-        //     package.name.green(),
-        //     release.version.green()
-        // );
         Ok(())
     }
 }

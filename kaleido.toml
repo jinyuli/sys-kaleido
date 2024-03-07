@@ -98,7 +98,7 @@ url = "https://github.com/BurntSushi/ripgrep"
 version = "14.1.0"
 replace = "grep"
 language = "rust"
-bin_name = "ripgrep"
+bin_name = "rg"
 description = "ripgrep is a line-oriented search tool that recursively searches the current directory for a regex pattern"
 [packages.github]
 org = "BurntSushi"

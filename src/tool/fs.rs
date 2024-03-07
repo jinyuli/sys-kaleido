@@ -196,7 +196,6 @@ fn sevenz(file_path: &Path, to_path: &Path) -> Result<Option<String>> {
 }
 
 fn unzip(file_path: &Path, to_path: &Path) -> Result<Option<String>> {
-    let mut top_folder = Option::None;
     let mut top_path: Option<PathBuf> = Option::None;
     let file = fs::File::open(file_path)?;
     let mut archive = zip::ZipArchive::new(file)?;
@@ -240,9 +239,13 @@ fn unzip(file_path: &Path, to_path: &Path) -> Result<Option<String>> {
             io::copy(&mut item, &mut outfile)?;
         }
     }
+
+    let mut top_folder = Option::None;
     if top_folder.is_none() && top_path.is_some() {
         if let Some(p) = top_path {
-            if let Some(name) = p.file_name() {
+            if p == to_path {
+                top_folder = None;
+            } else if let Some(name) = p.file_name() {
                 if let Some(s) = name.to_str() {
                     top_folder = Some(s.to_string());
                 }
