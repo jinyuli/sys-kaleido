@@ -35,7 +35,7 @@ function sys-kaleido-Install {
 
 function sys-kaleido-Set-Path {
     $paths = [System.Environment]::GetEnvironmentVariable("PATH", [System.EnvironmentVariableTarget]::User) -split ';'
-    $newPaths = @("$base_dir\bin")
+    $newPaths = @("$base_dir\bin", "$base_dir\alias")
 
     foreach ($p in $newPaths) {
         if ($p -in $paths) {
