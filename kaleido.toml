@@ -74,7 +74,7 @@ url = "https://github.com/Wilfred/difftastic"
 version = "0.56.0"
 replace = "diff"
 language = "rust"
-bin_name = "difftastic"
+bin_name = "difft"
 description = "Difftastic is a structural diff tool that compares files based on their syntax"
 [packages.github]
 org = "Wilfred"

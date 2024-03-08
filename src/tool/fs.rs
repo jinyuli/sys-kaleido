@@ -147,7 +147,15 @@ fn deflate(file_path: &Path, to_path: &Path) -> Result<Option<String>> {
     let tar = GzDecoder::new(tar_gz);
     let mut archive = Archive::new(tar);
     let top_folder: Option<PathBuf> = match archive.entries()?.filter_map(|e| e.ok()).next() {
-        Some(v) => Some(v.path()?.into_owned().clone()),
+        Some(v) => {
+            let kind = v.header().entry_type();
+            if kind.is_dir() {
+                Some(v.path()?.into_owned().clone())
+            } else {
+                let v_path = v.path()?.into_owned();
+                v_path.parent().map(|f| f.to_path_buf())
+            }
+        },
         None => None,
     };
 
