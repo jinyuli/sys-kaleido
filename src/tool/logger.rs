@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{env::var, path::Path};
 
 use log::{LevelFilter, SetLoggerError};
 use log4rs::{
@@ -28,6 +28,10 @@ pub fn init_logger(log_path: &Path) -> Result<(), SetLoggerError> {
         .to_str()
         .expect("rolling file name error");
 
+    let app_debug = match var("KALEIDO_DEBUG") {
+        Ok(v) => "true" == v,
+        Err(_) => false,
+    };
     let stderr = ConsoleAppender::builder().target(Target::Stderr).build();
     let trigger = SizeTrigger::new(LOGGER_SIZE);
     let roller = FixedWindowRoller::builder()
@@ -39,7 +43,7 @@ pub fn init_logger(log_path: &Path) -> Result<(), SetLoggerError> {
         .build(rolling_file_path, Box::new(policy))
         .unwrap();
 
-    let config = if is_release() {
+    let config = if is_release() && !app_debug {
         Config::builder()
             .appender(Appender::builder().build("roller", Box::new(rolling_file)))
             .appender(Appender::builder().build("stderr", Box::new(stderr)))

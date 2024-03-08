@@ -28,7 +28,7 @@ function get_os() {
 
 main() {
     local abi=$1
-    local release="0.1.1"
+    local release="0.1.2"
     local os=$(get_os)
     local arch=$(get_arch)
     local dest_file="${HOME}/.sys-kaleido/downloads/sys-kaleido${release}.${os}-${arch}"
@@ -64,7 +64,7 @@ main() {
     cat >${HOME}/.sys-kaleido/env <<-'EOF'
 #!/bin/sh
 # sys-kaleido shell setup
-export PATH="${HOME}/.sys-kaleido/bin:$PATH"
+export PATH="${HOME}/.sys-kaleido/alias:${HOME}/.sys-kaleido/bin:$PATH"
 	EOF
 
 

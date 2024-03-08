@@ -33,10 +33,10 @@ async fn main() {
     match command.cmd {
         args::TopCommand::Search(cmd) => {
             check_config(app_dir.get_home_dir(), &mut global_input).await;
-            search(cmd.package, app_dir.get_home_dir());
+            search(cmd.package, &app_dir).await;
         }
         args::TopCommand::Install(cmd) => {
-            check_config(app_dir.get_home_dir(), &mut global_input).await;
+            // check_config(app_dir.get_home_dir(), &mut global_input).await;
             let rust_abi = match cmd.rust_abi {
                 Some(abi) => abi,
                 None => default_abi(),
@@ -66,7 +66,6 @@ async fn main() {
         }
         args::TopCommand::Bindle(cmd) => {
             check_config(app_dir.get_home_dir(), &mut global_input).await;
-            debug!("bindle command {:?}", cmd);
 
             match cmd.command {
                 args::BindleSubCommand::Install(cmd) => {

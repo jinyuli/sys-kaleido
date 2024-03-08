@@ -1,7 +1,8 @@
 use super::execute::{InstallRequest, LATEST_VERSION};
 use crate::tool::{
-    fs::AppDir,
+    fs::{AppDir, FSError},
     kaleido::{Github, Package},
+    http,
 };
 use log::{debug, error};
 use octocrab::models::repos::Release;
@@ -106,7 +107,7 @@ async fn find_github_release(gt: &Github, version: &str) -> Result<Option<Releas
     let mut page: u32 = 0;
     // assume that tag name is the version, or `v` + version
     let mut versions = vec![version.to_string()];
-    if !version.starts_with('v') {
+    if version != LATEST_VERSION && !version.starts_with('v') {
         versions.push(format!("v{}", version));
     }
     loop {
@@ -162,9 +163,13 @@ fn to_github_arch(arch: &str) -> &str {
 
 #[derive(Error, Debug)]
 pub enum InstallError {
-    #[error("http error: {0}")]
-    Http(#[from] reqwest::Error),
-    #[error("file system error: {0}")]
+    #[error("{0}")]
+    Reqwest(#[from] reqwest::Error),
+    #[error("{0}")]
+    ToolFs(#[from] FSError),
+    #[error("{0}")]
+    Http(#[from] http::HttpError),
+    #[error("{0}")]
     FileSystem(#[from] std::io::Error),
     #[error("{0}")]
     General(String),

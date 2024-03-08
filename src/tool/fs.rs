@@ -49,7 +49,6 @@ impl AppDir {
                 fs::create_dir(&log_dir)?;
             }
 
-
             Ok(AppDir {
                 home_dir: home,
                 log_dir,
@@ -83,7 +82,7 @@ impl AppDir {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FileType {
     Compression,
     Plain,
@@ -92,19 +91,15 @@ pub enum FileType {
 
 pub fn get_file_type<T: AsRef<Path>>(file_name: T) -> FileType {
     match file_name.as_ref().extension() {
-        Some(ext) => {
-            match ext.to_str() {
-                Some(e) => {
-                    match e {
-                        "" => FileType::Plain,
-                        "zip" => FileType::Compression,
-                        "7z" => FileType::Compression,
-                        "gz" => FileType::Compression,
-                        _ => FileType::Unknown,
-                    }
-                },
-                None => FileType::Unknown,
-            }
+        Some(ext) => match ext.to_str() {
+            Some(e) => match e {
+                "" => FileType::Plain,
+                "zip" => FileType::Compression,
+                "7z" => FileType::Compression,
+                "gz" => FileType::Compression,
+                _ => FileType::Unknown,
+            },
+            None => FileType::Unknown,
         },
         None => FileType::Plain,
     }
@@ -153,7 +148,13 @@ fn deflate(file_path: &Path, to_path: &Path) -> Result<Option<String>> {
     let mut archive = Archive::new(tar);
     let top_folder: Option<PathBuf> = match archive.entries()?.filter_map(|e| e.ok()).next() {
         Some(v) => {
-            Some(v.path()?.into_owned().clone())
+            let kind = v.header().entry_type();
+            if kind.is_dir() {
+                Some(v.path()?.into_owned().clone())
+            } else {
+                let v_path = v.path()?.into_owned();
+                v_path.parent().map(|f| f.to_path_buf())
+            }
         },
         None => None,
     };
@@ -163,16 +164,19 @@ fn deflate(file_path: &Path, to_path: &Path) -> Result<Option<String>> {
             let mut components = p.components();
             let top = match components.next() {
                 Some(c) => {
-                    if c == Component::RootDir || c == Component::CurDir || c == Component::ParentDir {
+                    if c == Component::RootDir
+                        || c == Component::CurDir
+                        || c == Component::ParentDir
+                    {
                         components.next()
                     } else {
                         Some(c)
                     }
-                },
+                }
                 None => None,
             };
             Ok(top.map(|t| t.as_os_str().to_str().unwrap().to_string()))
-        },
+        }
         None => Ok(None),
     }
 }
@@ -200,7 +204,6 @@ fn sevenz(file_path: &Path, to_path: &Path) -> Result<Option<String>> {
 }
 
 fn unzip(file_path: &Path, to_path: &Path) -> Result<Option<String>> {
-    let mut top_folder = Option::None;
     let mut top_path: Option<PathBuf> = Option::None;
     let file = fs::File::open(file_path)?;
     let mut archive = zip::ZipArchive::new(file)?;
@@ -216,31 +219,41 @@ fn unzip(file_path: &Path, to_path: &Path) -> Result<Option<String>> {
                 println!("file {i} comment: {comment}");
             }
         }
-        if (*item.name()).ends_with('/') {
-            if top_folder.is_none()
-                || top_folder
-                    .as_ref()
-                    .is_some_and(|f: &String| f.len() > item.name().len())
-            {
-                top_folder = Some(item.name().to_string());
+        let child_path = if (*item.name()).ends_with('/') {
+            Some(outpath.as_path())
+        } else {
+            outpath.parent()
+        };
+        match &top_path {
+            Some(top) => {
+                if let Some(child) = child_path {
+                    top_path = Some(find_common_parent(top, child, to_path));
+                }
             }
+            None => {
+                top_path = child_path.map(|f| f.to_path_buf());
+            }
+        }
+
+        if (*item.name()).ends_with('/') {
             fs::create_dir_all(&outpath)?
         } else {
             if let Some(p) = outpath.parent() {
                 if !p.exists() {
                     fs::create_dir_all(p)?
                 }
-                if top_path.is_none() || top_path.as_ref().is_some_and(|t| t.starts_with(p)) {
-                    top_path = Some(p.to_path_buf());
-                }
             }
             let mut outfile = fs::File::create(&outpath)?;
             io::copy(&mut item, &mut outfile)?;
         }
     }
+
+    let mut top_folder = Option::None;
     if top_folder.is_none() && top_path.is_some() {
         if let Some(p) = top_path {
-            if let Some(name) = p.file_name() {
+            if p == to_path {
+                top_folder = None;
+            } else if let Some(name) = p.file_name() {
                 if let Some(s) = name.to_str() {
                     top_folder = Some(s.to_string());
                 }
@@ -250,28 +263,71 @@ fn unzip(file_path: &Path, to_path: &Path) -> Result<Option<String>> {
     Ok(top_folder)
 }
 
+fn find_common_parent<T: AsRef<Path>, S: AsRef<Path>>(t: T, s: S, root: &Path) -> PathBuf {
+    let t_path = t.as_ref();
+    let s_path = s.as_ref();
+    if t_path.starts_with(s_path) {
+        s_path.to_path_buf()
+    } else if s_path.starts_with(t_path) {
+        t_path.to_path_buf()
+    } else {
+        let mut top_parents = vec![];
+        let mut parent = t_path;
+        top_parents.push(parent);
+        while let Some(p) = parent.parent() {
+            if root.starts_with(p) {
+                break;
+            }
+            top_parents.insert(0, p);
+            parent = p;
+        }
+
+        let mut child_parents = vec![];
+        parent = s_path;
+        child_parents.push(parent);
+        while let Some(p) = parent.parent() {
+            if root.starts_with(p) {
+                break;
+            }
+            child_parents.insert(0, p);
+            parent = p;
+        }
+        let mut i = 0;
+        while i < top_parents.len() && i < child_parents.len() {
+            if top_parents[i] != child_parents[i] {
+                break;
+            }
+            i += 1;
+        }
+        let common_parent = if i == 0 { root } else { top_parents[i - 1] };
+        common_parent.to_path_buf()
+    }
+}
+
 #[cfg(target_os = "windows")]
-pub fn make_file_link(link_file: &Path, origin_file: &Path) -> Result<()> {
+pub fn make_file_link<T: AsRef<Path>, S: AsRef<Path>>(link_file: T, origin_file: S) -> Result<()> {
     use log::error;
     use std::fs::remove_file;
     use std::os::windows::fs::symlink_file;
 
-    debug!("make file link from {:?} to {:?}", link_file, origin_file);
-    if let Err(err) = symlink_file(origin_file, link_file) {
+    let link_path = link_file.as_ref();
+    let origin_path = origin_file.as_ref();
+    debug!("make file link from {:?} to {:?}", link_path, origin_path);
+    if let Err(err) = symlink_file(origin_path, link_path) {
         debug!("failed to make symlink: {}, try cmd", err);
-        if link_file.exists() {
-            if link_file.is_symlink() {
-                remove_link(link_file)?
+        if link_path.exists() {
+            if link_path.is_symlink() {
+                remove_link(link_path)?
             } else {
-                remove_file(link_file)?;
+                remove_file(link_path)?;
             }
         }
         let status = std::process::Command::new("cmd.exe")
             .arg("/c")
             .arg("mklink")
             .arg("/h")
-            .arg(link_file)
-            .arg(origin_file)
+            .arg(link_path)
+            .arg(origin_path)
             .stdout(std::process::Stdio::null())
             .status()?;
         if !status.success() {
@@ -286,23 +342,26 @@ pub fn make_file_link(link_file: &Path, origin_file: &Path) -> Result<()> {
 }
 
 #[cfg(target_os = "windows")]
-pub fn make_dir_link(link_dir: &Path, origin_dir: &Path) -> Result<()> {
+pub fn make_dir_link<T: AsRef<Path>, S: AsRef<Path>>(link_dir: T, origin_dir: S) -> Result<()> {
     use log::error;
     use std::fs::remove_dir;
     use std::os::windows::fs::symlink_dir;
 
-    debug!("make dir link from {:?} to {:?}", link_dir, origin_dir);
-    if let Err(err) = symlink_dir(origin_dir, link_dir) {
+    let link_path = link_dir.as_ref();
+    let origin_path = origin_dir.as_ref();
+    debug!("make dir link from {:?} to {:?}", link_path, origin_path);
+    if let Err(err) = symlink_dir(origin_path, link_path) {
         debug!("failed to make symlink: {}, try cmd", err);
-        if link_dir.exists() {
-            remove_dir(link_dir)?;
+        if link_dir.as_ref().exists() {
+            remove_dir(link_path)?;
         }
         let status = std::process::Command::new("cmd.exe")
             .arg("/c")
             .arg("mklink")
             .arg("/j")
-            .arg(link_dir)
-            .arg(origin_dir)
+            .arg(link_path)
+            .arg(origin_path)
+            .stdout(std::process::Stdio::null())
             .status()?;
         if !status.success() {
             error!("cmd mklink failed, status: {:?}", status.code());
@@ -316,8 +375,8 @@ pub fn make_dir_link(link_dir: &Path, origin_dir: &Path) -> Result<()> {
 }
 
 #[cfg(target_os = "windows")]
-pub fn make_link(link_dir: &Path, origin_dir: &Path) -> Result<()> {
-    if origin_dir.is_dir() {
+pub fn make_link<T: AsRef<Path>, S: AsRef<Path>>(link_dir: T, origin_dir: S) -> Result<()> {
+    if origin_dir.as_ref().is_dir() {
         make_dir_link(link_dir, origin_dir)
     } else {
         make_file_link(link_dir, origin_dir)
@@ -365,3 +424,89 @@ pub enum FSError {
     UnsupportedFile(&'static str),
 }
 
+#[cfg(test)]
+mod test {
+    use super::*;
+    use std::{
+        fs::{create_dir, File},
+        io::Write,
+    };
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_get_file_type() {
+        assert_eq!(FileType::Plain, get_file_type("path/test"));
+        assert_eq!(FileType::Compression, get_file_type("path/test.zip"));
+        assert_eq!(FileType::Compression, get_file_type("path/test.7z"));
+        assert_eq!(FileType::Compression, get_file_type("path/test.tar.gz"));
+        assert_eq!(FileType::Unknown, get_file_type("path/test.x"));
+    }
+
+    #[test]
+    fn test_make_link_file() -> std::result::Result<(), FSError> {
+        let dir = tempdir()?;
+        let file_path = dir.path().join("origin");
+        let mut file = File::create(&file_path)?;
+        writeln!(file, "test")?;
+        drop(file);
+
+        let link_path = dir.path().join("link");
+        assert!(!link_path.exists());
+        make_link(&link_path, &file_path)?;
+        assert!(link_path.exists());
+        if cfg!(target_os = "windows") {
+            assert!(link_path.is_file());
+        } else {
+            assert!(link_path.is_symlink());
+        }
+
+        dir.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_make_link_dir() -> std::result::Result<(), FSError> {
+        let dir = tempdir()?;
+        let file_path = dir.path().join("origin_dir");
+        create_dir(&file_path)?;
+
+        let link_path = dir.path().join("link_dir");
+        assert!(!link_path.exists());
+        make_link(&link_path, &file_path)?;
+        assert!(link_path.exists());
+        assert!(link_path.is_symlink());
+
+        dir.close()?;
+        Ok(())
+    }
+
+    #[test]
+    #[cfg(target_os="windows")]
+    fn test_find_common_parent() {
+        let root = Path::new("C:\\Users\\kaleido\\.sys-kaleido\\tmp");
+        let s = "C:\\Users\\kaleido\\.sys-kaleido\\tmp\\a";
+        let t = "C:\\Users\\kaleido\\.sys-kaleido\\tmp\\a\\b";
+        assert_eq!(find_common_parent(t, s, root), Path::new(s));
+        let s = "C:\\Users\\kaleido\\.sys-kaleido\\tmp\\a\\b";
+        let t = "C:\\Users\\kaleido\\.sys-kaleido\\tmp\\a\\b";
+        assert_eq!(find_common_parent(t, s, root), Path::new(s));
+        let s = "C:\\Users\\kaleido\\.sys-kaleido\\tmp\\b\\c";
+        let t = "C:\\Users\\kaleido\\.sys-kaleido\\tmp\\a\\b";
+        assert_eq!(find_common_parent(t, s, root), root);
+    }
+
+    #[test]
+    #[cfg(not(target_os="windows"))]
+    fn test_find_common_parent() {
+        let root = Path::new("/home/kaleido/.sys-kaleido/tmp");
+        let s = "/home/kaleido/.sys-kaleido/tmp/a";
+        let t = "/home/kaleido/.sys-kaleido/tmp/a/b";
+        assert_eq!(find_common_parent(t, s, root), Path::new(s));
+        let s = "/home/kaleido/.sys-kaleido/tmp/a/b";
+        let t = "/home/kaleido/.sys-kaleido/tmp/a/b";
+        assert_eq!(find_common_parent(t, s, root), Path::new(s));
+        let s = "/home/kaleido/.sys-kaleido/tmp/b/c";
+        let t = "/home/kaleido/.sys-kaleido/tmp/a/b";
+        assert_eq!(find_common_parent(t, s, root), root);
+    }
+}

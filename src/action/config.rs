@@ -43,7 +43,7 @@ pub async fn check_config(home_dir: &Path, global_input: &mut GlobalInput<'_>) {
     let config_path = home_dir.join(KALEIDO_SYS_FILE);
     debug!("check config file");
     if !config_path.exists() || !config_path.is_file() {
-        debug!("no such file, download it");
+        debug!("no kaleido file, download it");
         update(home_dir).await;
     } else {
         match metadata(&config_path).await {

@@ -27,4 +27,3 @@ impl <'a> GlobalInput<'a> {
         Ok(answer)
     }
 }
-

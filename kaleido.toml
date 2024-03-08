@@ -56,14 +56,137 @@ bin_name = "bat"
 org = "sharkdp"
 repo = "bat"
 
+[[packages]]
+name = "tokei"
+url = "https://github.com/XAMPPRocky/tokei"
+version = "13.0.0-alpha.1"
+replace = "wc"
+language = "rust"
+bin_name = "tokei"
+description = "Tokei is a program that displays statistics about your code"
+[packages.github]
+org = "XAMPPRocky"
+repo = "tokei"
+
+[[packages]]
+name = "difftastic"
+url = "https://github.com/Wilfred/difftastic"
+version = "0.56.0"
+replace = "diff"
+language = "rust"
+bin_name = "difft"
+description = "Difftastic is a structural diff tool that compares files based on their syntax"
+[packages.github]
+org = "Wilfred"
+repo = "difftastic"
+
+[[packages]]
+name = "fd"
+url = "https://github.com/sharkdp/fd"
+version = "9.0.0"
+replace = "fd"
+language = "rust"
+bin_name = "fd"
+description = "fd is a program to find entries in your filesystem"
+[packages.github]
+org = "sharkdp"
+repo = "fd"
+
+[[packages]]
+name = "ripgrep"
+url = "https://github.com/BurntSushi/ripgrep"
+version = "14.1.0"
+replace = "grep"
+language = "rust"
+bin_name = "rg"
+description = "ripgrep is a line-oriented search tool that recursively searches the current directory for a regex pattern"
+[packages.github]
+org = "BurntSushi"
+repo = "ripgrep"
+
+[[packages]]
+name = "zoxide"
+url = "https://github.com/ajeetdsouza/zoxide"
+version = "0.9.4"
+replace = "cd"
+language = "rust"
+bin_name = "zoxide"
+description = "A smarter cd command. Supports all major shells"
+[packages.github]
+org = "ajeetdsouza"
+repo = "zoxide"
+
+[[packages]]
+name = "fblog"
+url = "https://github.com/brocode/fblog"
+version = "4.8.0"
+language = "rust"
+bin_name = "fblog"
+description = "A small tool to view json log files"
+[packages.github]
+org = "brocode"
+repo = "fblog"
+
+[[packages]]
+name = "mcfly"
+url = "https://github.com/cantino/mcfly"
+version = "0.8.4"
+language = "rust"
+bin_name = "mcfly"
+description = "Fly through your shell history"
+[packages.github]
+org = "cantino"
+repo = "mcfly"
+
+[[packages]]
+name = "procs"
+url = "https://github.com/dalance/procs"
+version = "0.14.4"
+replace = "ps"
+language = "rust"
+bin_name = "procs"
+description = "A modern replacement for ps"
+[packages.github]
+org = "dalance"
+repo = "procs"
+
+[[packages]]
+name = "eza"
+url = "https://github.com/eza-community/eza"
+version = "0.18.6"
+replace = "ls"
+language = "rust"
+bin_name = "eza"
+description = "a modern, maintained replacement for ls"
+[packages.github]
+org = "eza-community"
+repo = "eza"
+
+[[packages]]
+name = "hex"
+url = "https://github.com/sitkevij/hex"
+version = "0.6.0"
+language = "rust"
+bin_name = "hx"
+description = "futuristic take on hexdump"
+[packages.github]
+org = "sitkevij"
+repo = "hex"
+
 [[bindles]]
 name = "core"
-[[bindles.packages]]
-name = "dust"
-alias = "du"
-[[bindles.packages]]
-name = "rmz"
-alias = "rm"
-[[bindles.packages]]
-name = "cpz"
-alias = "cp"
+packages = [
+    { name = "dust", alias = "du" },
+    { name = "rmz", alias = "rm" },
+    { name = "cpz", alias = "cp" },
+    { name = "fd" },
+    { name = "ripgrep", alias = "grep" },
+    { name = "difftastic", alias = "diff" },
+    { name = "tokei", alias = "wc" },
+    { name = "bat", alias = "cat" },
+    { name = "dust", alias = "du" },
+    { name = "zoxide", alias = "cd" },
+    { name = "procs", alias = "ps" },
+    { name = "eza", alias = "ls" },
+    { name = "hex" },
+]
