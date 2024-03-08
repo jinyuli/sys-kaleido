@@ -64,7 +64,7 @@ main() {
     cat >${HOME}/.sys-kaleido/env <<-'EOF'
 #!/bin/sh
 # sys-kaleido shell setup
-export PATH="${HOME}/.sys-kaleido/bin:$PATH"
+export PATH="${HOME}/.sys-kaleido/alias:${HOME}/.sys-kaleido/bin:$PATH"
 	EOF
 
 
